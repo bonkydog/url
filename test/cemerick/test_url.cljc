@@ -1,19 +1,17 @@
 (ns cemerick.test-url
-  #+clj (:import java.net.URL)
-  #+clj (:use cemerick.url
-              clojure.test)
-  #+cljs (:require-macros [cemerick.cljs.test :refer (are is deftest with-test run-tests testing)])
-  #+cljs (:use [cemerick.url :only [url map->query query->map map->URL]])
-  #+cljs (:require [cemerick.cljs.test :as t]))
+  (:require [clojure.test :refer [are is deftest run-tests testing] :as t]
+            [cemerick.url :refer [url map->query query->map map->URL]])
+  #?(:clj
+     (:import (java.net URL))))
 
 (def url-str (comp str url))
 
 (deftest test-map-to-query-str
   (are [x y] (= x (map->query y))
-       "a=1&b=2&c=3" {:a 1 :b 2 :c 3}
-       "a=1&b=2&c=3" {:a "1"  :b "2" :c "3"}
-       "a=1&b=2" {"a" "1" "b" "2"}
-       "a=" {"a" ""}))
+             "a=1&b=2&c=3" {:a 1 :b 2 :c 3}
+             "a=1&b=2&c=3" {:a "1" :b "2" :c "3"}
+             "a=1&b=2" {"a" "1" "b" "2"}
+             "a=" {"a" ""}))
 
 (deftest url-roundtripping
   (let [aurl (url "https://username:password@some.host.com/database?query=string")]
@@ -29,7 +27,7 @@
   (is (= "http://localhost:5984/a/b/c" (url-str (url "http://localhost:5984" "a") "b" "c"))))
 
 (deftest port-normalization
-  #+clj (is (== -1 (-> "https://foo" url-str URL. .getPort)))
+  #?(:clj (is (== -1 (-> "https://foo" url-str URL. .getPort))))
   (is (= "http://localhost" (url-str "http://localhost")))
   (is (= "http://localhost" (url-str "http://localhost:80")))
   (is (= "http://localhost:8080" (url-str "http://localhost:8080")))
@@ -40,27 +38,27 @@
 
 (deftest query-params
   (are [query map] (is (= map (query->map query)))
-    "a=b" {"a" "b"}
-    "a=1&b=2&c=3" {"a" "1" "b" "2" "c" "3"}
-    "a=" {"a" ""}
-    "a" {"a" ""}
-    nil nil
-    "" nil))
+                   "a=b" {"a" "b"}
+                   "a=1&b=2&c=3" {"a" "1" "b" "2" "c" "3"}
+                   "a=" {"a" ""}
+                   "a" {"a" ""}
+                   nil nil
+                   "" nil))
 
 (deftest user-info-edgecases
   (are [user-info url-string] (= user-info ((juxt :username :password) (url url-string)))
-    ["a" nil] "http://a@foo"
-    ["a" nil] "http://a:@foo"
-    ["a" "b:c"] "http://a:b:c@foo"))
+                              ["a" nil] "http://a@foo"
+                              ["a" nil] "http://a:@foo"
+                              ["a" "b:c"] "http://a:b:c@foo"))
 
 (deftest path-normalization
   (is (= "http://a/" (url-str "http://a/b/c/../..")))
-  
+
   (is (= "http://a/b/c" (url-str "http://a/b/" "c")))
   (is (= "http://a/b/c" (url-str "http://a/b/.." "b" "c")))
   (is (= "http://a/b/c" (str (url "http://a/b/..////./" "b" "c" "../././.." "b" "c"))))
   (is (= "http://a/" (str (url "http://a/b/..////./" "b" "c" "../././.." "b" "c" "/"))))
-  
+
   (is (= "http://a/x" (str (url "http://a/b/c" "/x"))))
   (is (= "http://a/" (str (url "http://a/b/c" "/"))))
   (is (= "http://a/" (str (url "http://a/b/c" "../.."))))
